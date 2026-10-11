@@ -72,7 +72,84 @@ data class FeatheredUiState(
     val groupInvites: List<GroupInvite> = MockData.groupInvites,
     val activeGroupId: Long? = null,
     val groupMembersOverrides: Map<Long, Map<Long, String>> = emptyMap(), // groupId -> (userId -> role)
-    val groupPostingDisabledOverrides: Map<Long, Set<Long>> = emptyMap() // groupId -> Set<userId>
+    val groupPostingDisabledOverrides: Map<Long, Set<Long>> = emptyMap(), // groupId -> Set<userId>
+    // Ads Manager state
+    val adCampaigns: List<AdCampaign> = listOf(
+        AdCampaign(
+            id = 1L,
+            name = "Summer Safari Adventure 2026",
+            type = "image",
+            status = "active",
+            mediaUrl = "https://images.unsplash.com/photo-1516426122078-c23e76319801?w=800",
+            mediaUrls = listOf(
+                "https://images.unsplash.com/photo-1516426122078-c23e76319801?w=800",
+                "https://images.unsplash.com/photo-1547471080-7cc2caa01a7e?w=800"
+            ),
+            description = "Experience the majestic Serengeti migration and Ngorongoro Crater! Book early and enjoy 20% off all luxury tented lodge packages. 🦁🌿",
+            cta = "Book Now",
+            link = "https://tanzaniasafari.example.com",
+            phone = "+255 754 112 233",
+            email = "safari@example.com",
+            location = "Tanzania & East Africa",
+            budget = 15,
+            days = 14,
+            startDate = "2026-03-01",
+            endDate = "2026-03-15",
+            impressions = 14200,
+            views = 9850,
+            clicks = 680,
+            postId = 1L
+        ),
+        AdCampaign(
+            id = 2L,
+            name = "Authentic Kitenge Bomber Jackets",
+            type = "image",
+            status = "active",
+            mediaUrl = "https://images.unsplash.com/photo-1551028719-00167b16eac5?w=800",
+            mediaUrls = listOf("https://images.unsplash.com/photo-1551028719-00167b16eac5?w=800"),
+            description = "Handmade artisan Kitenge bomber jackets now available with free delivery across Dar es Salaam. Unisex sizes S to XXL! 🎨🔥",
+            cta = "Shop Now",
+            link = "https://kitengefashion.example.com",
+            phone = "+255 682 998 877",
+            email = "orders@kitengefashion.com",
+            location = "Dar es Salaam, Tanzania",
+            budget = 10,
+            days = 7,
+            startDate = "2026-03-05",
+            endDate = "2026-03-12",
+            impressions = 8940,
+            views = 6200,
+            clicks = 412,
+            postId = 2L
+        ),
+        AdCampaign(
+            id = 3L,
+            name = "Kilimanjaro Summit Expedition",
+            type = "video",
+            status = "paused",
+            mediaUrl = "https://images.unsplash.com/photo-1589556264800-08ae9e129a8c?w=800",
+            mediaUrls = listOf("https://images.unsplash.com/photo-1589556264800-08ae9e129a8c?w=800"),
+            description = "Conquer the roof of Africa with certified guides and full safety equipment. Machame and Lemosho route expeditions departing every week.",
+            cta = "Learn More",
+            link = "https://kilimanjaroclimb.example.com",
+            phone = "+255 712 345 678",
+            location = "Global",
+            budget = 25,
+            days = 21,
+            startDate = "2026-02-10",
+            endDate = "2026-03-03",
+            impressions = 24600,
+            views = 18400,
+            clicks = 980,
+            postId = 3L
+        )
+    ),
+    val activeAdCampaignToBoostPost: Post? = null,
+    // Authentication State
+    val isLoggedIn: Boolean = true,
+    val isGuest: Boolean = false,
+    val showAuthModal: Boolean = false,
+    val authMode: String = "login" // "login", "register", "forgot"
 )
 
 class FeatheredViewModel : ViewModel() {
@@ -1401,6 +1478,170 @@ class FeatheredViewModel : ViewModel() {
                 } else group
             }
             state.copy(groups = updatedGroups)
+        }
+    }
+
+    // ==========================================
+    // ADS MANAGER ACTIONS
+    // ==========================================
+
+    fun pauseAdCampaign(id: Long) {
+        _uiState.update { state ->
+            val updated = state.adCampaigns.map {
+                if (it.id == id) it.copy(status = "paused") else it
+            }
+            state.copy(adCampaigns = updated)
+        }
+    }
+
+    fun resumeAdCampaign(id: Long) {
+        _uiState.update { state ->
+            val updated = state.adCampaigns.map {
+                if (it.id == id) it.copy(status = "active") else it
+            }
+            state.copy(adCampaigns = updated)
+        }
+    }
+
+    fun deleteAdCampaign(id: Long) {
+        _uiState.update { state ->
+            val updated = state.adCampaigns.filter { it.id != id }
+            state.copy(adCampaigns = updated)
+        }
+    }
+
+    fun createAdCampaign(
+        postId: Long?,
+        name: String,
+        type: String,
+        mediaUrl: String?,
+        mediaUrls: List<String>,
+        description: String,
+        link: String?,
+        phone: String?,
+        email: String?,
+        cta: String,
+        location: String,
+        budget: Int,
+        days: Int
+    ) {
+        val newCampaign = AdCampaign(
+            id = System.currentTimeMillis(),
+            name = name.ifBlank { "Campaign #${System.currentTimeMillis() % 1000}" },
+            type = type,
+            status = "active",
+            mediaUrl = mediaUrl,
+            mediaUrls = mediaUrls,
+            description = description,
+            cta = cta,
+            link = link,
+            phone = phone,
+            email = email,
+            location = location.ifBlank { "Global" },
+            budget = budget,
+            days = days,
+            startDate = "2026-03-11",
+            endDate = "2026-03-${11 + days}",
+            impressions = 0,
+            views = 0,
+            clicks = 0,
+            postId = postId
+        )
+        _uiState.update { state ->
+            state.copy(
+                adCampaigns = listOf(newCampaign) + state.adCampaigns,
+                activeAdCampaignToBoostPost = null
+            )
+        }
+    }
+
+    fun setAdCampaignToBoostPost(post: Post?) {
+        _uiState.update { it.copy(activeAdCampaignToBoostPost = post) }
+    }
+
+    // ==========================================
+    // AUTHENTICATION ACTIONS
+    // ==========================================
+
+    fun openAuth(mode: String = "login") {
+        _uiState.update { it.copy(showAuthModal = true, authMode = mode) }
+    }
+
+    fun closeAuth() {
+        _uiState.update { it.copy(showAuthModal = false) }
+    }
+
+    fun setAuthMode(mode: String) {
+        _uiState.update { it.copy(authMode = mode) }
+    }
+
+    fun continueAsGuest() {
+        _uiState.update {
+            it.copy(
+                isGuest = true,
+                showAuthModal = false,
+                currentScreen = Screen.FEED
+            )
+        }
+    }
+
+    fun loginUser(email: String, pass: String): Boolean {
+        val matchedUser = _uiState.value.users.find { it.email.equals(email.trim(), ignoreCase = true) }
+            ?: _uiState.value.currentUser.copy(email = email.trim())
+
+        _uiState.update { state ->
+            state.copy(
+                currentUser = matchedUser,
+                isLoggedIn = true,
+                isGuest = false,
+                showAuthModal = false,
+                currentScreen = Screen.FEED
+            )
+        }
+        return true
+    }
+
+    fun registerUser(
+        username: String,
+        email: String,
+        pass: String,
+        nationality: String,
+        location: String,
+        birthDate: String,
+        gender: String
+    ): Boolean {
+        val newUser = User(
+            id = System.currentTimeMillis(),
+            name = username.trim(),
+            username = username.lowercase().replace(" ", "_"),
+            email = email.trim(),
+            profileImageUrl = "https://ui-avatars.com/api/?name=${username.replace(" ", "+")}&background=1877F2&color=fff&bold=true",
+            location = location.ifBlank { "Dar es Salaam, Tanzania" },
+            gender = gender,
+            birthDate = birthDate,
+            isOnline = true
+        )
+
+        _uiState.update { state ->
+            state.copy(
+                currentUser = newUser,
+                users = listOf(newUser) + state.users,
+                isLoggedIn = true,
+                isGuest = false,
+                showAuthModal = false,
+                currentScreen = Screen.FEED
+            )
+        }
+        return true
+    }
+
+    fun logoutUser() {
+        _uiState.update { state ->
+            state.copy(
+                isLoggedIn = false,
+                showAuthModal = true,
+                authMode = "login"
+            )
         }
     }
 }

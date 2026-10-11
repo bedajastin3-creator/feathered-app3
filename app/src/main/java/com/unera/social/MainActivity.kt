@@ -13,6 +13,8 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.window.Dialog
+import androidx.compose.ui.window.DialogProperties
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.unera.social.data.MockData
 import com.unera.social.model.Screen
@@ -72,7 +74,8 @@ fun FeatheredApp(
                 Screen.STORY_FEED,
                 Screen.REELS,
                 Screen.MUSIC,
-                Screen.SETTINGS
+                Screen.SETTINGS,
+                Screen.ADS_MANAGER
             )
             if (!uiState.showNotificationsOverlay && uiState.activeConversationId == null && !hasCustomTopBar) {
                 FeatheredTopBar(
@@ -438,7 +441,7 @@ fun FeatheredApp(
                     SettingsScreen(
                         currentUser = uiState.currentUser,
                         onClose = { viewModel.setScreen(Screen.FEED) },
-                        onLogout = { viewModel.setScreen(Screen.FEED) },
+                        onLogout = { viewModel.logoutUser() },
                         onUpdateUserDetails = { name, bio, work, edu, loc, web, gender, bday ->
                             viewModel.updateFullProfileDetails(name, bio, work, edu, loc, web, gender, bday)
                         },
@@ -449,6 +452,35 @@ fun FeatheredApp(
                             viewModel.deleteAccount()
                         },
                         modifier = screenModifier
+                    )
+                }
+                Screen.ADS_MANAGER -> {
+                    AdsManagerScreen(
+                        campaigns = uiState.adCampaigns,
+                        currentUser = uiState.currentUser,
+                        userPosts = uiState.posts.filter { it.author.id == uiState.currentUser.id },
+                        initialPost = uiState.activeAdCampaignToBoostPost,
+                        onPauseCampaign = { viewModel.pauseAdCampaign(it) },
+                        onResumeCampaign = { viewModel.resumeAdCampaign(it) },
+                        onDeleteCampaign = { viewModel.deleteAdCampaign(it) },
+                        onCreateCampaign = { postId, name, type, mediaUrl, mediaUrls, desc, link, phone, email, cta, loc, budget, days ->
+                            viewModel.createAdCampaign(postId, name, type, mediaUrl, mediaUrls, desc, link, phone, email, cta, loc, budget, days)
+                        },
+                        onBack = {
+                            viewModel.setAdCampaignToBoostPost(null)
+                            viewModel.setScreen(Screen.FEED)
+                        },
+                        modifier = screenModifier
+                    )
+                }
+                Screen.AUTH -> {
+                    AuthScreen(
+                        initialMode = uiState.authMode,
+                        onClose = { viewModel.setScreen(Screen.FEED) },
+                        onLogin = { email, pass -> viewModel.loginUser(email, pass) },
+                        onSignup = { u, e, p, nat, loc, bday, gen -> viewModel.registerUser(u, e, p, nat, loc, bday, gen) },
+                        onContinueAsGuest = { viewModel.continueAsGuest() },
+                        modifier = Modifier.fillMaxSize()
                     )
                 }
             }
@@ -561,13 +593,14 @@ fun FeatheredApp(
                     "music" -> viewModel.setScreen(Screen.MUSIC)
                     "groups" -> viewModel.setScreen(Screen.GROUPS)
                     "tools" -> viewModel.setShowSearchDialog(true)
-                    "ads" -> viewModel.setScreen(Screen.MARKETPLACE)
+                    "ads" -> viewModel.setScreen(Screen.ADS_MANAGER)
                     "settings", "privacy", "terms", "help" -> viewModel.setScreen(Screen.SETTINGS)
                     else -> {}
                 }
             },
             onLogout = {
                 viewModel.setShowMenuOverlay(false)
+                viewModel.logoutUser()
             }
         )
     }
@@ -660,6 +693,30 @@ fun FeatheredApp(
                 viewModel.closeShareTrack()
             }
         )
+    }
+
+    // Auth Screen Modal Overlay (when user logs out or requests sign in)
+    if (uiState.showAuthModal) {
+        Dialog(
+            onDismissRequest = {
+                // If user is logged out, allow them to dismiss only if guest, or continue as guest
+                viewModel.closeAuth()
+            },
+            properties = androidx.compose.ui.window.DialogProperties(
+                usePlatformDefaultWidth = false,
+                dismissOnBackPress = true,
+                dismissOnClickOutside = false
+            )
+        ) {
+            AuthScreen(
+                initialMode = uiState.authMode,
+                onClose = { viewModel.closeAuth() },
+                onLogin = { email, pass -> viewModel.loginUser(email, pass) },
+                onSignup = { u, e, p, nat, loc, bday, gen -> viewModel.registerUser(u, e, p, nat, loc, bday, gen) },
+                onContinueAsGuest = { viewModel.continueAsGuest() },
+                modifier = Modifier.fillMaxSize()
+            )
+        }
     }
 }
 

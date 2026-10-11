@@ -14,7 +14,9 @@ enum class Screen {
     STORY_FEED,
     MUSIC,
     GROUPS,
-    SETTINGS
+    SETTINGS,
+    ADS_MANAGER,
+    AUTH
 }
 
 enum class NotificationType {
@@ -376,4 +378,27 @@ data class SongComment(
     val likesCount: Long = 0,
     val isHidden: Boolean = false,
     val hiddenBy: Long? = null
+)
+
+data class AdCampaign(
+    val id: Long,
+    val name: String = "",
+    val type: String = "image", // "image" or "video"
+    val status: String = "active", // "active", "paused", "completed"
+    val mediaUrl: String? = null,
+    val mediaUrls: List<String> = emptyList(),
+    val description: String = "",
+    val cta: String = "Learn More",
+    val link: String? = null,
+    val phone: String? = null,
+    val email: String? = null,
+    val location: String = "Global",
+    val budget: Int = 5,
+    val days: Int = 7,
+    val startDate: String = "2026-03-01",
+    val endDate: String = "2026-03-08",
+    val impressions: Int = 0,
+    val views: Int = 0,
+    val clicks: Int = 0,
+    val postId: Long? = null
 )
